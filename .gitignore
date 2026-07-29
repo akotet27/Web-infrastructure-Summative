@@ -1,0 +1,12 @@
+# Secrets — real API key config stays local (use scripts/config.example.js as template)
+scripts/config.js
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dependencies / builds (none expected, but just in case)
+node_modules/
+dist/
