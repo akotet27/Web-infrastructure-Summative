@@ -151,4 +151,4 @@ Also verify end-to-end in a browser: load the app through the load balancer's ad
 - **Data & API:** [openFDA](https://open.fda.gov/) — Drug Label API by the U.S. Food & Drug Administration. [Endpoint documentation](https://open.fda.gov/apis/drug/label/) · [Authentication docs](https://open.fda.gov/apis/authentication/). openFDA data is provided in the public domain; note openFDA's own disclaimer that its data is not intended for clinical decision-making.
 - **Fonts:** [Google Fonts](https://fonts.google.com/) — Roboto, Raleway, Poppins.
 - **Design inspiration:** color palette adapted from the Medicio template (BootstrapMade); all CSS written from scratch.
-- Built by **Akotet Shimelis** (a.demise@alustudent.com) for the Web Infrastructure summative, African Leadership University.
+
