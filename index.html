@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroRef — Epilepsy Medication Reference</title>
+  <meta name="description" content="Search official FDA label information for epilepsy medications, and compare interaction information between two drugs." />
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+
+  <!-- Skip link for keyboard users -->
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#" class="brand" aria-label="NeuroRef home">
+        <span class="brand-mark" aria-hidden="true">
+          <!-- simple pulse-line logo mark -->
+          <svg viewBox="0 0 40 40" width="34" height="34">
+            <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/>
+            <path d="M6 20 h6 l3 -9 l4 18 l3 -9 h9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>NeuroRef</strong>
+          <small>Epilepsy Medication Reference</small>
+        </span>
+      </a>
+
+      <nav class="tabs" aria-label="Views">
+        <button class="tab active" data-view="explorer" aria-pressed="true">Explore medications</button>
+        <button class="tab" data-view="interactions" aria-pressed="false">Check interactions</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+
+    <!-- ══════════════ HERO ══════════════ -->
+    <section class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Official FDA label information</p>
+        <h1 class="hero-title">Understand epilepsy medications, in plain reach.</h1>
+        <p class="hero-sub">
+          Search any anti-epileptic drug to read what it treats, its documented
+          side effects, interactions, and dosing — pulled directly from FDA labels.
+          Compare two medications to see what each label says about interactions.
+        </p>
+      </div>
+    </section>
+
+    <!-- ══════════════ VIEW 1: EXPLORER ══════════════ -->
+    <section id="view-explorer" class="view active" aria-labelledby="explorer-heading">
+      <h2 id="explorer-heading" class="sr-only">Explore medications</h2>
+
+      <!-- Search bar -->
+      <div class="search-panel">
+        <label for="drugSearch" class="search-label">Search a medication</label>
+        <div class="search-row">
+          <input
+            type="text"
+            id="drugSearch"
+            class="search-input"
+            placeholder="e.g. levetiracetam, lamotrigine, valproate…"
+            autocomplete="off"
+            aria-describedby="search-hint"
+          />
+          <button id="searchBtn" class="btn btn-primary">Search</button>
+        </div>
+        <p id="search-hint" class="search-hint">Type a drug name, or pick a common one below.</p>
+
+        <!-- Drug chips -->
+        <div class="chips" role="group" aria-label="Common epilepsy medications">
+          <button class="chip" data-drug="levetiracetam">Levetiracetam</button>
+          <button class="chip" data-drug="lamotrigine">Lamotrigine</button>
+          <button class="chip" data-drug="valproic acid">Valproic acid</button>
+          <button class="chip" data-drug="carbamazepine">Carbamazepine</button>
+          <button class="chip" data-drug="phenytoin">Phenytoin</button>
+          <button class="chip" data-drug="topiramate">Topiramate</button>
+          <button class="chip" data-drug="oxcarbazepine">Oxcarbazepine</button>
+          <button class="chip" data-drug="lacosamide">Lacosamide</button>
+          <button class="chip" data-drug="zonisamide">Zonisamide</button>
+          <button class="chip" data-drug="clobazam">Clobazam</button>
+        </div>
+      </div>
+
+      <!-- Controls: filter + sort (wire these up in app.js) -->
+      <div class="controls" id="explorerControls" hidden>
+        <div class="control-group">
+          <label for="sectionFilter" class="control-label">Show section</label>
+          <select id="sectionFilter" class="control-select">
+            <option value="all">All sections</option>
+            <option value="indications">What it treats</option>
+            <option value="adverse">Side effects</option>
+            <option value="interactions">Drug interactions</option>
+            <option value="dosage">Dosage</option>
+            <option value="warnings">Warnings</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="resultSort" class="control-label">Sort results</label>
+          <select id="resultSort" class="control-select">
+            <option value="relevance">Relevance</option>
+            <option value="az">Name A–Z</option>
+            <option value="za">Name Z–A</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- STATE: loading (toggle .hidden from app.js) -->
+      <div id="explorerLoading" class="state state-loading" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Fetching label information…</p>
+      </div>
+
+      <!-- STATE: error (set message + unhide from app.js) -->
+      <div id="explorerError" class="state state-error" role="alert" hidden>
+        <p id="explorerErrorMsg">Something went wrong.</p>
+      </div>
+
+      <!-- STATE: empty / first load -->
+      <div id="explorerEmpty" class="state state-empty">
+        <div class="empty-mark" aria-hidden="true">🔍</div>
+        <p>Search a medication above to see its FDA label information.</p>
+      </div>
+
+      <!-- RESULTS: your JS renders drug cards into here -->
+      <div id="explorerResults" class="results" aria-live="polite">
+        <!--
+          ┌─────────────────────────────────────────────────────┐
+          │  RENDER TARGET — build these cards in ui.js          │
+          │  Suggested markup for one drug (class names already  │
+          │  styled for you) shown in the comment below.         │
+          └─────────────────────────────────────────────────────┘
+
+          <article class="drug-card">
+            <header class="drug-card-head">
+              <h3 class="drug-name">Levetiracetam</h3>
+              <span class="drug-brand">Brand: Keppra</span>
+            </header>
+
+            <div class="drug-section">
+              <h4 class="section-title">What it treats</h4>
+              <p class="section-body">…indications_and_usage text…</p>
+            </div>
+
+            <div class="drug-section">
+              <h4 class="section-title">Side effects</h4>
+              <p class="section-body">…adverse_reactions text…</p>
+            </div>
+
+            <div class="drug-section">
+              <h4 class="section-title section-title-flag">Drug interactions</h4>
+              <p class="section-body">…drug_interactions text…</p>
+            </div>
+
+            <div class="drug-section">
+              <h4 class="section-title">Dosage</h4>
+              <p class="section-body">…dosage_and_administration text…</p>
+            </div>
+          </article>
+        -->
+      </div>
+
+      <!-- Medical disclaimer -->
+      <aside class="disclaimer" role="note">
+        <span class="disclaimer-icon" aria-hidden="true">ⓘ</span>
+        <p>
+          This tool shows information from official FDA drug labels for reference only.
+          It is not medical advice. Always confirm anything about your medications with
+          a doctor or pharmacist.
+        </p>
+      </aside>
+    </section>
+
+    <!-- ══════════════ VIEW 2: INTERACTIONS ══════════════ -->
+    <section id="view-interactions" class="view" aria-labelledby="interactions-heading" hidden>
+      <h2 id="interactions-heading" class="sr-only">Check interactions</h2>
+
+      <div class="search-panel">
+        <p class="search-label">Compare two medications</p>
+        <div class="compare-row">
+          <input type="text" id="drugA" class="search-input" placeholder="First medication" autocomplete="off" />
+          <span class="compare-plus" aria-hidden="true">+</span>
+          <input type="text" id="drugB" class="search-input" placeholder="Second medication" autocomplete="off" />
+          <button id="compareBtn" class="btn btn-primary">Compare</button>
+        </div>
+        <p class="search-hint">
+          The tool fetches each drug's FDA label and shows what each says about interactions,
+          side by side. It does not calculate a combined result.
+        </p>
+      </div>
+
+      <!-- STATE: loading -->
+      <div id="compareLoading" class="state state-loading" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <p>Fetching both labels…</p>
+      </div>
+
+      <!-- STATE: error -->
+      <div id="compareError" class="state state-error" role="alert" hidden>
+        <p id="compareErrorMsg">Something went wrong.</p>
+      </div>
+
+      <!-- STATE: empty -->
+      <div id="compareEmpty" class="state state-empty">
+        <div class="empty-mark" aria-hidden="true">⚖️</div>
+        <p>Enter two medications to compare their interaction information.</p>
+      </div>
+
+      <!-- RESULTS: two-column comparison rendered by your JS -->
+      <div id="compareResults" class="compare-grid" aria-live="polite">
+        <!--
+          RENDER TARGET — build two of these columns in ui.js:
+
+          <article class="compare-col">
+            <h3 class="drug-name">Drug A name</h3>
+            <div class="drug-section">
+              <h4 class="section-title section-title-flag">Interactions (from its label)</h4>
+              <p class="section-body">…drug_interactions text…</p>
+            </div>
+          </article>
+        -->
+      </div>
+
+      <aside class="disclaimer" role="note">
+        <span class="disclaimer-icon" aria-hidden="true">ⓘ</span>
+        <p>
+          Interaction text is quoted from each drug's official FDA label. This is not a
+          clinical interaction check. Always confirm with a pharmacist or doctor before
+          combining medications.
+        </p>
+      </aside>
+    </section>
+
+  </main>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="footer-credit">
+        Data from <a href="https://open.fda.gov/" target="_blank" rel="noopener noreferrer">openFDA</a>,
+        the U.S. Food &amp; Drug Administration's open data API.
+      </p>
+      <p class="footer-meta">NeuroRef · Built by Akotet Shimelis · Educational project</p>
+    </div>
+  </footer>
+
+  <!-- Optional API key config (git-ignored; copy scripts/config.example.js).
+       The app works without it — openFDA allows keyless requests. -->
+  <script src="scripts/config.js"></script>
+  <script type="module" src="scripts/app.js"></script>
+
+</body>
+</html>
