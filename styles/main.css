@@ -47,6 +47,11 @@
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* The hidden attribute must win over any display rule below
+   (e.g. .state-loading { display: flex }), otherwise every
+   loading/error/results block renders at once. */
+[hidden] { display: none !important; }
+
 body {
   font-family: var(--font-body);
   color: var(--text);
