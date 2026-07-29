@@ -2,7 +2,7 @@
 
 NeuroRef is a web application that helps people living with epilepsy, their caregivers, and students understand anti-epileptic medications. It pulls **official FDA drug label data** (indications, side effects, drug interactions, dosage, and warnings) from the [openFDA API](https://open.fda.gov/) and presents it in plain, readable sections — information that is otherwise buried in dense regulatory documents.
 
-**Live demo (load balancer):** http://YOUR-LB-ADDRESS/
+**Live demo (load balancer):** http://3.93.236.243/
 **Demo video:** https://YOUR-VIDEO-LINK
 
 ## Why this app matters
@@ -65,25 +65,30 @@ openFDA allows **keyless** requests (shared limit of 240 requests/min per IP), s
 
 ## Deployment (Web01, Web02, Lb01)
 
-The app is served by **Nginx** on both web servers, with **HAProxy** on the load balancer distributing traffic round-robin between them.
+This is a static site, so deployment is just copying the HTML/CSS/JS files to each web node and serving them with Nginx. HAProxy on the load balancer forwards traffic to both nodes in round-robin order.
 
 ### 1. Deploy the app to Web01 and Web02
 
-Repeat the following on **both** `web-01` and `web-02`:
+Repeat the same steps on both web servers.
+
+From your local machine, copy the project directory to each server:
 
 ```bash
-# from your local machine — copy the app to the server
-scp -r Web-infrastructure-Summative ubuntu@<web-01-ip>:/tmp/neuroref
+scp -r epilepsy-med-explorer ubuntu@<web01-public-ip>:/tmp/neuroref
+scp -r epilepsy-med-explorer ubuntu@<web02-public-ip>:/tmp/neuroref
+```
 
-# on the server
-ssh ubuntu@<web-01-ip>
-sudo apt update && sudo apt install -y nginx
+On each server, install Nginx and place the static files in `/var/www/html`:
+
+```bash
+sudo apt update
+sudo apt install -y nginx
 sudo rm -rf /var/www/html/*
 sudo cp -r /tmp/neuroref/* /var/www/html/
 sudo chown -R www-data:www-data /var/www/html
 ```
 
-Add a custom header in Nginx that identifies which server answered — this is how we verify load balancing later. Edit `/etc/nginx/sites-available/default` inside the `server` block:
+Add a custom header in Nginx so you can confirm which server answered a request. Edit `/etc/nginx/sites-available/default` inside the `server` block:
 
 ```nginx
 server {
@@ -101,7 +106,8 @@ server {
 Then reload and test:
 
 ```bash
-sudo nginx -t && sudo systemctl reload nginx
+sudo nginx -t
+sudo systemctl reload nginx
 curl -I http://localhost   # expect HTTP 200 + X-Served-By header
 ```
 
@@ -137,7 +143,7 @@ curl -sI http://<lb-01-ip>/ | grep X-Served-By   # → web-02
 curl -sI http://<lb-01-ip>/ | grep X-Served-By   # → web-01 ...
 ```
 
-Also verify end-to-end in a browser: load the app through the load balancer's address, run a search, and confirm data renders. Stopping Nginx on one web server (`sudo systemctl stop nginx`) and refreshing confirms HAProxy fails over to the healthy server.
+Also verify end-to-end in a browser: open the app through the load balancer address, run a search, and confirm data renders. Stopping Nginx on one web server (`sudo systemctl stop nginx`) and refreshing confirms HAProxy fails over to the healthy server.
 
 ## Challenges and how I solved them
 
