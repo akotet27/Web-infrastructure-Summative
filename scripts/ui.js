@@ -95,12 +95,21 @@ export function renderCompareColumn(label) {
 /* ── state toggling ──
    Each view has loading / error / empty / results elements;
    show exactly one state at a time. */
-export function setState(ids, state, errorMessage) {
-  const { loading, error, errorMsg, empty, results } = ids;
+export function setState(ids, state, errorMessage, suggestionActions = []) {
+  const { loading, error, errorMsg, empty, results, suggestions } = ids;
   loading.hidden = state !== 'loading';
   error.hidden = state !== 'error';
   empty.hidden = state !== 'empty';
   results.hidden = state !== 'results';
   if (state === 'error' && errorMessage) errorMsg.textContent = errorMessage;
-  if (state !== 'results') results.replaceChildren();
+  if (suggestions) {
+    suggestions.replaceChildren();
+    for (const { label, onClick } of suggestionActions) {
+      const btn = el('button', 'chip', label);
+      btn.type = 'button';
+      btn.addEventListener('click', onClick);
+      suggestions.appendChild(btn);
+    }
+  }
+  results.replaceChildren();
 }

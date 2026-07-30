@@ -17,11 +17,58 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // labels change rarely; cache for a d
 
 /** Errors we raise deliberately, with messages safe to show the user. */
 export class ApiError extends Error {
-  constructor(message, { notFound = false } = {}) {
+  constructor(message, { notFound = false, suggestion = null } = {}) {
     super(message);
     this.name = 'ApiError';
     this.notFound = notFound;
+    this.suggestion = suggestion;
   }
+}
+
+/* ── spelling suggestions ──
+   openFDA has no fuzzy search, so "did you mean" only works against
+   drugs NeuroRef already knows about (the quick-pick chips), matched
+   by edit distance against both generic and brand names. */
+const KNOWN_DRUGS = [
+  'levetiracetam', 'keppra',
+  'lamotrigine', 'lamictal',
+  'valproic acid', 'depakote',
+  'carbamazepine', 'tegretol',
+  'phenytoin', 'dilantin',
+  'topiramate', 'topamax',
+  'oxcarbazepine', 'trileptal',
+  'lacosamide', 'vimpat',
+  'zonisamide', 'zonegran',
+  'clobazam', 'onfi',
+];
+
+function levenshtein(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+/** Closest known drug name to `term`, or null if nothing is close enough. */
+function suggestDrugName(term) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const name of KNOWN_DRUGS) {
+    const dist = levenshtein(term, name);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = name;
+    }
+  }
+  if (!best || bestDist === 0) return null;
+  const threshold = Math.max(2, Math.ceil(best.length * 0.34));
+  return bestDist <= threshold ? best : null;
 }
 
 /* ── cache helpers ── */
@@ -77,9 +124,12 @@ export async function fetchDrugLabels(query) {
   }
 
   if (response.status === 404) {
+    const suggestion = suggestDrugName(term);
     throw new ApiError(
-      `No FDA label found for “${query.trim()}”. Check the spelling, or try the generic name (e.g. “levetiracetam” instead of “Keppra”).`,
-      { notFound: true }
+      suggestion
+        ? `No FDA label found for “${query.trim()}”. Did you mean “${suggestion}”?`
+        : `No FDA label found for “${query.trim()}”. Check the spelling, or try the generic name (e.g. “levetiracetam” instead of “Keppra”).`,
+      { notFound: true, suggestion }
     );
   }
   if (response.status === 429) {

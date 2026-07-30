@@ -195,6 +195,8 @@ a:hover { color: var(--accent); }
   border-radius: var(--radius); color: #a13f3c; padding: 22px 24px; text-align: left;
 }
 .state-error p { font-weight: 500; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+.suggestions:empty { display: none; }
 
 /* ══════════════ DRUG CARDS ══════════════ */
 .results { display: flex; flex-direction: column; gap: 20px; }

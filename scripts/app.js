@@ -17,6 +17,7 @@ const explorerIds = {
   errorMsg: $('explorerErrorMsg'),
   empty: $('explorerEmpty'),
   results: $('explorerResults'),
+  suggestions: $('explorerSuggestions'),
 };
 const compareIds = {
   loading: $('compareLoading'),
@@ -24,6 +25,7 @@ const compareIds = {
   errorMsg: $('compareErrorMsg'),
   empty: $('compareEmpty'),
   results: $('compareResults'),
+  suggestions: $('compareSuggestions'),
 };
 
 /* ── tab switching ── */
@@ -45,6 +47,8 @@ document.querySelectorAll('.tab').forEach((tab) => {
 /* ── explorer: search + filter + sort ── */
 let currentLabels = []; // last successful search, re-rendered on filter/sort change
 
+const MAX_QUERY_LENGTH = 100; // no real drug name is anywhere near this long
+
 function sortedLabels() {
   const mode = $('resultSort').value;
   if (mode === 'relevance') return currentLabels;
@@ -61,10 +65,20 @@ function renderExplorer() {
 }
 
 async function runSearch(query) {
+  const cleaned = query.trim();
+  if (!cleaned) {
+    setState(explorerIds, 'error', 'Please enter a medication name.');
+    return;
+  }
+  if (cleaned.length > MAX_QUERY_LENGTH) {
+    setState(explorerIds, 'error', `That name is too long (max ${MAX_QUERY_LENGTH} characters). Please check the spelling and try again.`);
+    return;
+  }
+
   $('explorerControls').hidden = true;
   setState(explorerIds, 'loading');
   try {
-    currentLabels = await fetchDrugLabels(query);
+    currentLabels = await fetchDrugLabels(cleaned);
     $('explorerControls').hidden = false;
     renderExplorer();
   } catch (err) {
@@ -72,7 +86,16 @@ async function runSearch(query) {
     const message = err instanceof ApiError
       ? err.message
       : 'An unexpected error occurred. Please try again.';
-    setState(explorerIds, 'error', message);
+    const actions = err instanceof ApiError && err.suggestion
+      ? [{
+          label: `Search “${err.suggestion}” instead`,
+          onClick: () => {
+            $('drugSearch').value = err.suggestion;
+            runSearch(err.suggestion);
+          },
+        }]
+      : [];
+    setState(explorerIds, 'error', message, actions);
   }
 }
 
@@ -101,23 +124,46 @@ async function runCompare() {
     setState(compareIds, 'error', 'Please enter two different medications.');
     return;
   }
+  if (nameA.length > MAX_QUERY_LENGTH || nameB.length > MAX_QUERY_LENGTH) {
+    setState(compareIds, 'error', `Medication names must be under ${MAX_QUERY_LENGTH} characters.`);
+    return;
+  }
 
   setState(compareIds, 'loading');
-  try {
-    // Fetch both labels in parallel; either failure aborts with its message.
-    const [labelsA, labelsB] = await Promise.all([
-      fetchDrugLabels(nameA),
-      fetchDrugLabels(nameB),
-    ]);
-    setState(compareIds, 'results');
-    compareIds.results.appendChild(renderCompareColumn(labelsA[0]));
-    compareIds.results.appendChild(renderCompareColumn(labelsB[0]));
-  } catch (err) {
-    const message = err instanceof ApiError
-      ? err.message
-      : 'An unexpected error occurred. Please try again.';
-    setState(compareIds, 'error', message);
+  // Fetch both labels in parallel with allSettled (not all) so a failure on
+  // one side can still be attributed to its own field, with its own suggestion.
+  const [resultA, resultB] = await Promise.allSettled([
+    fetchDrugLabels(nameA),
+    fetchDrugLabels(nameB),
+  ]);
+
+  if (resultA.status === 'rejected' || resultB.status === 'rejected') {
+    const messages = [];
+    const actions = [];
+    const describeFailure = (result, field, position) => {
+      const err = result.reason;
+      messages.push(err instanceof ApiError
+        ? err.message
+        : `An unexpected error occurred for the ${position} medication.`);
+      if (err instanceof ApiError && err.suggestion) {
+        actions.push({
+          label: `Use “${err.suggestion}” for the ${position} medication`,
+          onClick: () => {
+            $(field).value = err.suggestion;
+            runCompare();
+          },
+        });
+      }
+    };
+    if (resultA.status === 'rejected') describeFailure(resultA, 'drugA', 'first');
+    if (resultB.status === 'rejected') describeFailure(resultB, 'drugB', 'second');
+    setState(compareIds, 'error', messages.join(' '), actions);
+    return;
   }
+
+  setState(compareIds, 'results');
+  compareIds.results.appendChild(renderCompareColumn(resultA.value[0]));
+  compareIds.results.appendChild(renderCompareColumn(resultB.value[0]));
 }
 
 $('compareBtn').addEventListener('click', runCompare);
