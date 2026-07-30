@@ -1,0 +1,33 @@
+name: Deploy to web servers
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to web-01
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 184.72.105.193
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/Web-infrastructure-Summative
+            git pull
+            sudo cp -r ~/Web-infrastructure-Summative/* /var/www/html/
+            sudo chown -R www-data:www-data /var/www/html
+
+      - name: Deploy to web-02
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 52.23.236.50
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/Web-infrastructure-Summative
+            git pull
+            sudo cp -r ~/Web-infrastructure-Summative/* /var/www/html/
+            sudo chown -R www-data:www-data /var/www/html
