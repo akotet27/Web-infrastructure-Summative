@@ -13,7 +13,7 @@ jobs:
         with:
           host: 184.72.105.193
           username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.AKOTET_2}}
           script: |
             cd ~/Web-infrastructure-Summative
             git pull
@@ -25,7 +25,7 @@ jobs:
         with:
           host: 52.23.236.50
           username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.AKOTET_2 }}
           script: |
             cd ~/Web-infrastructure-Summative
             git pull
