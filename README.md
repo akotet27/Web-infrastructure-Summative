@@ -3,7 +3,7 @@
 NeuroRef is a web application that helps people living with epilepsy, their caregivers, and students understand anti-epileptic medications. It pulls **official FDA drug label data** (indications, side effects, drug interactions, dosage, and warnings) from the [openFDA API](https://open.fda.gov/) and presents it in plain, readable sections — information that is otherwise buried in dense regulatory documents.
 
 **Live demo (load balancer):** http://3.93.236.243/
-**Demo video:** https://YOUR-VIDEO-LINK
+**Demo video:** https://canva.link/cpotaymi5u5xncs
 
 ## Why this app matters
 
