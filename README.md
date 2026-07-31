@@ -24,8 +24,12 @@ Epilepsy treatment usually involves long-term medication, frequent drug changes,
 | Sort | Results by relevance, name A–Z, or Z–A |
 | Compare | Two-drug side-by-side interaction comparison |
 | Error handling | Distinct, human-readable messages for: empty input, drug not found (404), rate limiting (429), network failure, malformed responses, and unexpected HTTP errors |
+| Spelling suggestions | A misspelled drug name (e.g. "levetiracetm") gets a clickable "Did you mean 'levetiracetam'?" suggestion, matched by edit distance against known anti-epileptic names |
+| Input validation | Empty, whitespace-only, and unreasonably long (>100 char) input is rejected client-side before any network request is made |
 | Caching | API responses cached in `localStorage` for 24 h — repeat searches are instant and don't consume rate limit |
 | Accessibility | Skip link, ARIA live regions, keyboard operable, reduced-motion support |
+| CI/CD | GitHub Actions workflow auto-deploys to both web servers on every push to `main` |
+| Containerization | Dockerfile packages the app with Nginx for a portable, host-independent run, separate from the graded bare-metal deployment |
 
 ## Project structure
 
@@ -141,6 +145,33 @@ curl -sI http://3.93.236.243/ | grep -i x-served-by   # → 7154-web-01 ...
 The same alternation is visible in the browser: open DevTools → Network tab → tick **Disable cache** → refresh → check the `x-served-by` response header on the document request. Refresh again and it flips to the other server.
 
 Also verify end-to-end in a browser: open http://3.93.236.243/, run a search, and confirm data renders correctly through the load balancer. Stopping Nginx on one web server (`sudo systemctl stop nginx`) and refreshing confirms HAProxy fails over to the healthy server.
+
+## CI/CD and containerization (bonus)
+
+### Continuous deployment — GitHub Actions
+
+Deploying used to mean SSHing into web-01, then web-02, and repeating the same four commands (`git pull`, `cp`, `chown`) by hand every time. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) automates that: on every push to `main`, GitHub spins up a temporary runner that SSHes into both servers and runs those exact commands, so the live site always matches `main` with no manual step.
+
+The workflow needs the deploy key to authenticate as this SSH-based automation, which raises the same problem the openFDA key discussion raises, but with much higher stakes: a private key pasted directly into a workflow file would be visible to anyone browsing the public repo, handing them SSH access to both servers. GitHub Actions **secrets** solve this — `SSH_PRIVATE_KEY` is stored encrypted in the repo's Settings → Secrets and variables → Actions, referenced in the workflow only as `${{ secrets.SSH_PRIVATE_KEY }}`, decrypted by GitHub only inside the ephemeral runner at execution time, and never shown in logs, diffs, or anywhere a repo visitor could read it.
+
+This was built on a separate `ci-cd-setup` branch rather than directly on `main`, specifically because the workflow's trigger is `on: push: branches: [main]` — pushing to any other branch runs nothing and cannot touch the live servers, so the pipeline could be written and reviewed with zero risk to the graded deployment, then merged once trusted.
+
+### Containerization — Docker
+
+[`Dockerfile`](Dockerfile) packages the static site with Nginx into a portable image:
+
+```dockerfile
+FROM nginx:alpine       # start from an image that already has Nginx installed
+COPY . /usr/share/nginx/html   # the official image's default web root
+EXPOSE 80                # documents the port Nginx listens on inside the container
+```
+
+```bash
+docker build -t neuroref .
+docker run -d -p 8080:80 --name neuroref-container neuroref
+```
+
+The `-p 8080:80` mapping is the important safety detail: the left side (`8080`) is the **host** port, the right side (`80`) is the port Nginx listens on **inside the container**. The bare-metal Nginx install already bound to host port 80 (serving the graded URL, http://3.93.236.243/) is completely untouched — the container answers on a separate port, demoable at `http://184.72.105.193:8080`, while the actual submission URL never interacts with Docker at all.
 
 ## Challenges and how I solved them
 
